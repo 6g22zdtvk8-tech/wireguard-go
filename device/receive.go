@@ -370,6 +370,7 @@ func (device *Device) RoutineHandshake(id int) {
 			// have to reassign msgType for ranged msgType to work
 			msg.Type = elem.msgType
 
+			// consume initiation
 			peer := device.ConsumeMessageInitiation(&msg, elem.endpoint)
 
 			if peer == nil {
