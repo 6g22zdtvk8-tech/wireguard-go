@@ -16,7 +16,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/control"
 	M "github.com/sagernet/sing/common/metadata"
 	"golang.org/x/net/ipv4"
@@ -34,8 +33,7 @@ var (
 // methods for sending and receiving multiple datagrams per-syscall. See the
 // proposal in https://github.com/golang/go/issues/45886#issuecomment-1218301564.
 type StdNetBind struct {
-	externalControl     control.Func
-	reservedForEndpoint map[netip.AddrPort][3]uint8
+	externalControl control.Func
 
 	mu            sync.Mutex // protects all fields except as specified
 	ipv4          *net.UDPConn
@@ -57,8 +55,7 @@ type StdNetBind struct {
 
 func NewStdNetBind(externalControl control.Func) Bind {
 	return &StdNetBind{
-		externalControl:     externalControl,
-		reservedForEndpoint: make(map[netip.AddrPort][3]uint8),
+		externalControl: externalControl,
 
 		udpAddrPool: sync.Pool{
 			New: func() any {
@@ -303,9 +300,6 @@ func (s *StdNetBind) receiveIP(
 		if sizes[i] == 0 {
 			continue
 		}
-		if msg.N > 3 {
-			common.ClearArray(bufs[i][1:4])
-		}
 		ep := &StdNetEndpoint{AddrPort: M.AddrPortFromNet(msg.Addr)} // TODO: remove allocation
 		getSrcFromControl(msg.OOB[:msg.NN], ep)
 		eps[i] = ep
@@ -415,14 +409,6 @@ func (s *StdNetBind) Send(bufs [][]byte, endpoint Endpoint, offset int) error {
 		retried bool
 		err     error
 	)
-	for _, buf := range bufs {
-		if len(buf) > 3 {
-			reserved, loaded := s.reservedForEndpoint[endpoint.(*StdNetEndpoint).AddrPort]
-			if loaded {
-				copy(buf[1:4], reserved[:])
-			}
-		}
-	}
 retry:
 	if offload {
 		n := coalesceMessages(ua, endpoint.(*StdNetEndpoint), bufs, offset, *msgs, setGSOSize)
@@ -453,9 +439,7 @@ retry:
 	return err
 }
 
-func (s *StdNetBind) SetReservedForEndpoint(destination netip.AddrPort, reserved [3]byte) {
-	s.reservedForEndpoint[destination] = reserved
-}
+
 
 func (s *StdNetBind) send(conn *net.UDPConn, pc batchWriter, msgs []ipv6.Message) error {
 	var (

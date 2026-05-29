@@ -17,7 +17,6 @@ import (
 
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/control"
-	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/wireguard-go/conn/winrio"
 	"golang.org/x/sys/windows"
@@ -75,8 +74,7 @@ type afWinRingBind struct {
 
 // WinRingBind uses Windows registered I/O for fast ring buffered networking.
 type WinRingBind struct {
-	externalControl     control.Func
-	reservedForEndpoint map[WinRingEndpoint][3]uint8
+	externalControl control.Func
 
 	v4, v6 afWinRingBind
 	mu     sync.RWMutex
@@ -92,8 +90,7 @@ func NewWinRingBind(externalControl control.Func) Bind {
 		return NewStdNetBind(externalControl)
 	}
 	return &WinRingBind{
-		externalControl:     externalControl,
-		reservedForEndpoint: make(map[WinRingEndpoint][3]uint8),
+		externalControl: externalControl,
 	}
 }
 
@@ -542,12 +539,6 @@ func (bind *WinRingBind) Send(bufs [][]byte, endpoint Endpoint, offset int) erro
 	defer bind.mu.RUnlock()
 	for _, buf := range bufs {
 		buf = buf[offset:]
-		if len(buf) > 3 {
-			reserved, loaded := bind.reservedForEndpoint[*endpoint.(*WinRingEndpoint)]
-			if loaded {
-				copy(buf[1:4], reserved[:])
-			}
-		}
 		switch nend.family {
 		case windows.AF_INET:
 			if bind.v4.blackhole {
@@ -566,14 +557,6 @@ func (bind *WinRingBind) Send(bufs [][]byte, endpoint Endpoint, offset int) erro
 		}
 	}
 	return nil
-}
-
-func (bind *WinRingBind) SetReservedForEndpoint(destination netip.AddrPort, reserved [3]byte) {
-	endpoint, err := bind.ParseEndpoint(destination.String())
-	if err != nil {
-		panic(E.Cause(err, "parse destination as WinRingEndpoint"))
-	}
-	bind.reservedForEndpoint[*endpoint.(*WinRingEndpoint)] = reserved
 }
 
 func (s *StdNetBind) BindSocketToInterface4(interfaceIndex uint32, blackhole bool) error {
