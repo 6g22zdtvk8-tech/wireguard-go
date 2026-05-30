@@ -125,19 +125,19 @@ func (device *Device) IpcGetOperation(w io.Writer) error {
 			sendf("s4=%d", device.paddings.transport)
 		}
 
-		if device.headers.init != nil {
+		if device.headers.init.start != MessageInitiationType || device.headers.init.end != MessageInitiationType {
 			sendf("h1=%s", device.headers.init.GenSpec())
 		}
 
-		if device.headers.response != nil {
+		if device.headers.response.start != MessageResponseType || device.headers.response.end != MessageResponseType {
 			sendf("h2=%s", device.headers.response.GenSpec())
 		}
 
-		if device.headers.cookie != nil {
+		if device.headers.cookie.start != MessageCookieReplyType || device.headers.cookie.end != MessageCookieReplyType {
 			sendf("h3=%s", device.headers.cookie.GenSpec())
 		}
 
-		if device.headers.transport != nil {
+		if device.headers.transport.start != MessageTransportType || device.headers.transport.end != MessageTransportType {
 			sendf("h4=%s", device.headers.transport.GenSpec())
 		}
 
