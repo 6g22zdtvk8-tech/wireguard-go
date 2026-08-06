@@ -107,14 +107,14 @@ func (c *ChannelBind) makeReceiveFunc(ch chan []byte) conn.ReceiveFunc {
 	}
 }
 
-func (c *ChannelBind) Send(bufs [][]byte, ep conn.Endpoint) error {
+func (c *ChannelBind) Send(bufs [][]byte, ep conn.Endpoint, offset int) error {
 	for _, b := range bufs {
 		select {
 		case <-c.closeSignal:
 			return net.ErrClosed
 		default:
-			bc := make([]byte, len(b))
-			copy(bc, b)
+			bc := make([]byte, len(b)-offset)
+			copy(bc, b[offset:])
 			if ep.(ChannelEndpoint) == c.target4 {
 				*c.tx4 <- bc
 			} else if ep.(ChannelEndpoint) == c.target6 {

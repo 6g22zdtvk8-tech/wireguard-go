@@ -6,6 +6,7 @@
 package device
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"github.com/sagernet/wireguard-go/conn"
 	"github.com/sagernet/wireguard-go/tai64n"
 	"golang.org/x/crypto/blake2s"
+	"golang.org/x/crypto/chacha20"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/poly1305"
 )
@@ -288,7 +290,7 @@ func (device *Device) CreateMessageInitiation(peer *Peer) (*MessageInitiation, e
 
 	handshake.mixHash(handshake.remoteStatic[:])
 
-	msgType := device.headers.init.Generate()
+	msgType := device.headers.init.Load().PickOne()
 
 	msg := MessageInitiation{
 		Type:      msgType,
@@ -469,7 +471,7 @@ func (device *Device) CreateMessageResponse(peer *Peer) (*MessageResponse, error
 	}
 
 	var msg MessageResponse
-	msg.Type = device.headers.response.Generate()
+	msg.Type = device.headers.response.Load().PickOne()
 	msg.Sender = handshake.localIndex
 	msg.Receiver = handshake.remoteIndex
 
@@ -724,4 +726,30 @@ func (peer *Peer) ReceivedWithKeypair(receivedKeypair *Keypair) bool {
 	keypairs.current = keypairs.next.Load()
 	keypairs.next.Store(nil)
 	return true
+}
+
+func (device *Device) JunkPackets() [][]byte {
+	var bufs [][]byte
+
+	min := device.junk.min.Load()
+	max := device.junk.max.Load()
+
+	for range device.junk.count.Load() {
+		buf := make([]byte, min+fastrandn(max-min))
+		rand.Read(buf)
+		bufs = append(bufs, buf)
+	}
+
+	return bufs
+}
+
+func (device *Device) HeaderProtectionCipher(salt []byte) (*chacha20.Cipher, error) {
+	device.headerProtection.RLock()
+	defer device.headerProtection.RUnlock()
+
+	if device.headerProtection.key.IsZero() {
+		return nil, nil
+	}
+
+	return chacha20.NewUnauthenticatedCipher(device.headerProtection.key[:], salt)
 }
