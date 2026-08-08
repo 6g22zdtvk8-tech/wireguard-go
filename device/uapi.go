@@ -370,6 +370,7 @@ func (device *Device) handleDeviceLine(ipcDev *ipcSetDevice, key, value string) 
 		if err != nil {
 			return ipcErrorf(ipc.IpcErrorInvalid, "failed to parse s1: %w", err)
 		}
+		device.log.Verbosef("UAPI: Updating s1 padding")
 		ipcDev.paddings.init = uint32(padding)
 
 	case "s2":
@@ -377,6 +378,7 @@ func (device *Device) handleDeviceLine(ipcDev *ipcSetDevice, key, value string) 
 		if err != nil {
 			return ipcErrorf(ipc.IpcErrorInvalid, "failed to parse s2: %w", err)
 		}
+		device.log.Verbosef("UAPI: Updating s2 padding")
 		ipcDev.paddings.response = uint32(padding)
 
 	case "s3":
@@ -384,6 +386,7 @@ func (device *Device) handleDeviceLine(ipcDev *ipcSetDevice, key, value string) 
 		if err != nil {
 			return ipcErrorf(ipc.IpcErrorInvalid, "failed to parse s3: %w", err)
 		}
+		device.log.Verbosef("UAPI: Updating s3 padding")
 		ipcDev.paddings.cookie = uint32(padding)
 
 	case "s4":
@@ -391,6 +394,7 @@ func (device *Device) handleDeviceLine(ipcDev *ipcSetDevice, key, value string) 
 		if err != nil {
 			return ipcErrorf(ipc.IpcErrorInvalid, "failed to parse s4: %w", err)
 		}
+		device.log.Verbosef("UAPI: Updating s4 padding")
 		ipcDev.paddings.transport = uint32(padding)
 
 	case "h1":
@@ -398,6 +402,7 @@ func (device *Device) handleDeviceLine(ipcDev *ipcSetDevice, key, value string) 
 		if err := rang.FromString(value); err != nil {
 			return ipcErrorf(ipc.IpcErrorInvalid, "failed to parse H1: %w", err)
 		}
+		device.log.Verbosef("UAPI: Updating h1 padding")
 		ipcDev.headers.init = rang
 
 	case "h2":
@@ -405,6 +410,7 @@ func (device *Device) handleDeviceLine(ipcDev *ipcSetDevice, key, value string) 
 		if err := rang.FromString(value); err != nil {
 			return ipcErrorf(ipc.IpcErrorInvalid, "failed to parse H2: %w", err)
 		}
+		device.log.Verbosef("UAPI: Updating h2 padding")
 		ipcDev.headers.response = rang
 
 	case "h3":
@@ -412,6 +418,7 @@ func (device *Device) handleDeviceLine(ipcDev *ipcSetDevice, key, value string) 
 		if err := rang.FromString(value); err != nil {
 			return ipcErrorf(ipc.IpcErrorInvalid, "failed to parse H3: %w", err)
 		}
+		device.log.Verbosef("UAPI: Updating h3 padding")
 		ipcDev.headers.cookie = rang
 
 	case "h4":
@@ -419,6 +426,7 @@ func (device *Device) handleDeviceLine(ipcDev *ipcSetDevice, key, value string) 
 		if err := rang.FromString(value); err != nil {
 			return ipcErrorf(ipc.IpcErrorInvalid, "failed to parse H4: %w", err)
 		}
+		device.log.Verbosef("UAPI: Updating h4 padding")
 		ipcDev.headers.transport = rang
 
 	case "i1":
@@ -462,6 +470,7 @@ func (device *Device) handleDeviceLine(ipcDev *ipcSetDevice, key, value string) 
 		if err != nil {
 			return ipcErrorf(ipc.IpcErrorInvalid, "failed to set header_protection_key: %w", err)
 		}
+		device.log.Verbosef("UAPI: Updating header protection key")
 		ipcDev.headerProtectionKey = key
 
 	case "content_padding_addition":
@@ -807,16 +816,9 @@ func (d *ipcSetDevice) mergeWithDevice(device *Device) error {
 		}
 	}
 
-	device.log.Verbosef("UAPI: Updating h1 padding")
 	device.headers.init.Store(d.headers.init)
-
-	device.log.Verbosef("UAPI: Updating h2 padding")
 	device.headers.response.Store(d.headers.response)
-
-	device.log.Verbosef("UAPI: Updating h3 padding")
 	device.headers.cookie.Store(d.headers.cookie)
-
-	device.log.Verbosef("UAPI: Updating h4 padding")
 	device.headers.transport.Store(d.headers.transport)
 
 	if !d.headerProtectionKey.IsZero() {
@@ -828,19 +830,10 @@ func (d *ipcSetDevice) mergeWithDevice(device *Device) error {
 		}
 	}
 
-	device.log.Verbosef("UAPI: Updating s1 padding")
 	device.paddings.init.Store(d.paddings.init)
-
-	device.log.Verbosef("UAPI: Updating s2 padding")
 	device.paddings.response.Store(d.paddings.response)
-
-	device.log.Verbosef("UAPI: Updating s3 padding")
 	device.paddings.cookie.Store(d.paddings.cookie)
-
-	device.log.Verbosef("UAPI: Updating s4 padding")
 	device.paddings.transport.Store(d.paddings.transport)
-
-	device.log.Verbosef("UAPI: Updating header protection key")
 	device.headerProtection.key = d.headerProtectionKey
 
 	return nil

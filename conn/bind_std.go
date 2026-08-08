@@ -439,8 +439,6 @@ retry:
 	return err
 }
 
-
-
 func (s *StdNetBind) send(conn *net.UDPConn, pc batchWriter, msgs []ipv6.Message) error {
 	var (
 		n     int
