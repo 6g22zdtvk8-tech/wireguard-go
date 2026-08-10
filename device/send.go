@@ -138,9 +138,9 @@ func (peer *Peer) SendHandshakeInitiation(isRetry bool) error {
 
 	for _, ipacket := range peer.device.ipackets {
 		if ipacket != nil {
-			buf := make([]byte, MessageEncapsulatingTransportSize+ipacket.ObfuscatedLen(0))
-			packet := buf[MessageEncapsulatingTransportSize:]
-			ipacket.Obfuscate(packet, nil)
+			buffer := make([]byte, MessageEncapsulatingTransportSize+ipacket.ObfuscatedLen(0))
+			buf := buffer[MessageEncapsulatingTransportSize:]
+			ipacket.Obfuscate(buf, nil)
 			sendBuffer = append(sendBuffer, buf)
 		}
 	}
@@ -148,12 +148,13 @@ func (peer *Peer) SendHandshakeInitiation(isRetry bool) error {
 	sendBuffer = append(sendBuffer, peer.device.JunkPackets()...)
 
 	padding := peer.device.paddings.init.Load()
-	buf := make([]byte, MessageEncapsulatingTransportSize+padding+MessageInitiationSize)
+	buffer := make([]byte, MessageEncapsulatingTransportSize+padding+MessageInitiationSize)
+	buf := buffer[MessageEncapsulatingTransportSize:]
 
-	crypt := buf[MessageEncapsulatingTransportSize : MessageEncapsulatingTransportSize+padding]
+	crypt := buf[:padding]
 	rand.Read(crypt)
 
-	packet := buf[MessageEncapsulatingTransportSize+padding:]
+	packet := buf[padding:]
 	_ = msg.marshal(packet)
 	peer.cookieGenerator.AddMacs(packet)
 
@@ -168,7 +169,7 @@ func (peer *Peer) SendHandshakeInitiation(isRetry bool) error {
 		cip.XORKeyStream(packet, packet)
 	}
 
-	sendBuffer = append(sendBuffer, buf)
+	sendBuffer = append(sendBuffer, buffer)
 	err = peer.SendBuffers(sendBuffer)
 	if err != nil {
 		peer.device.log.Errorf("%v - Failed to send handshake initiation: %v", peer, err)
@@ -192,12 +193,13 @@ func (peer *Peer) SendHandshakeResponse() error {
 	}
 
 	padding := peer.device.paddings.response.Load()
-	buf := make([]byte, MessageEncapsulatingTransportSize+padding+MessageResponseSize)
+	buffer := make([]byte, MessageEncapsulatingTransportSize+padding+MessageResponseSize)
+	buf := buffer[MessageEncapsulatingTransportSize:]
 
-	crypt := buf[MessageEncapsulatingTransportSize : MessageEncapsulatingTransportSize+padding]
+	crypt := buf[:padding]
 	rand.Read(crypt)
 
-	packet := buf[MessageEncapsulatingTransportSize+padding:]
+	packet := buf[padding:]
 	_ = response.marshal(packet)
 	peer.cookieGenerator.AddMacs(packet)
 
@@ -220,7 +222,7 @@ func (peer *Peer) SendHandshakeResponse() error {
 	}
 
 	// TODO: allocation could be avoided
-	err = peer.SendBuffers([][]byte{buf})
+	err = peer.SendBuffers([][]byte{buffer})
 	if err != nil {
 		peer.device.log.Errorf("%v - Failed to send handshake response: %v", peer, err)
 	}
@@ -245,12 +247,13 @@ func (device *Device) SendHandshakeCookie(initiatingElem *QueueHandshakeElement)
 	}
 
 	padding := device.paddings.cookie.Load()
-	buf := make([]byte, MessageEncapsulatingTransportSize+padding+MessageCookieReplySize)
+	buffer := make([]byte, MessageEncapsulatingTransportSize+padding+MessageCookieReplySize)
+	buf := buffer[MessageEncapsulatingTransportSize:]
 
-	crypt := buf[MessageEncapsulatingTransportSize : MessageEncapsulatingTransportSize+padding]
+	crypt := buf[:padding]
 	rand.Read(crypt)
 
-	packet := buf[MessageEncapsulatingTransportSize+padding:]
+	packet := buf[padding:]
 	_ = reply.marshal(packet)
 
 	cip, err := device.HeaderProtectionCipher(crypt[:HeaderCipherNonceSize])
@@ -262,7 +265,7 @@ func (device *Device) SendHandshakeCookie(initiatingElem *QueueHandshakeElement)
 	}
 
 	// TODO: allocation could be avoided
-	device.net.bind.Send([][]byte{buf}, initiatingElem.endpoint, MessageEncapsulatingTransportSize)
+	device.net.bind.Send([][]byte{buffer}, initiatingElem.endpoint, MessageEncapsulatingTransportSize)
 	return nil
 }
 
@@ -627,12 +630,13 @@ func (device *Device) RoutineEncryption(id int) {
 
 	for elemsContainer := range device.queue.encryption.c {
 		for _, elem := range elemsContainer.elems {
+			buf := elem.buffer[MessageEncapsulatingTransportSize:]
 			// fill crypto padding
-			crypt := elem.buffer[MessageEncapsulatingTransportSize : MessageEncapsulatingTransportSize+elem.padding]
+			crypt := buf[:elem.padding]
 			rand.Read(crypt)
 
 			// populate header fields
-			header := elem.buffer[MessageEncapsulatingTransportSize+elem.padding : MessageEncapsulatingTransportSize+elem.padding+MessageTransportHeaderSize]
+			header := buf[elem.padding : elem.padding+MessageTransportHeaderSize]
 
 			fieldType := header[0:4]
 			fieldReceiver := header[4:8]
@@ -661,7 +665,7 @@ func (device *Device) RoutineEncryption(id int) {
 
 			binary.LittleEndian.PutUint64(nonce[4:], elem.nonce)
 			elem.packet = elem.keypair.send.Seal(
-				elem.buffer[:MessageEncapsulatingTransportSize+elem.padding+MessageTransportHeaderSize],
+				buf[:elem.padding+MessageTransportHeaderSize],
 				nonce[:],
 				elem.packet,
 				nil,
@@ -676,6 +680,7 @@ func (device *Device) RoutineEncryption(id int) {
 			if cip != nil {
 				cip.XORKeyStream(header, header)
 			}
+			elem.packet = elem.buffer[:MessageEncapsulatingTransportSize+len(elem.packet)]
 		}
 		elemsContainer.Unlock()
 	}
@@ -714,7 +719,7 @@ func (peer *Peer) RoutineSequentialSender(maxBatchSize int) {
 		dataSent := false
 		elemsContainer.Lock()
 		for _, elem := range elemsContainer.elems {
-			if len(elem.packet[MessageEncapsulatingTransportSize:]) != MessageKeepaliveSize {
+			if len(elem.packet[MessageEncapsulatingTransportSize+elem.padding:]) != MessageKeepaliveSize {
 				dataSent = true
 			}
 
