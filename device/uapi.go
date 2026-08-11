@@ -128,19 +128,19 @@ func (device *Device) IpcGetOperation(w io.Writer) error {
 			sendf("s4=%d", padding)
 		}
 
-		if header := device.headers.init.Load(); !header.IsZero() {
+		if header := device.headers.init.Load(); !header.IsZero() && !header.IsSingle(MessageInitiationType) {
 			sendf("h1=%s", header.ToString())
 		}
 
-		if header := device.headers.response.Load(); !header.IsZero() {
+		if header := device.headers.response.Load(); !header.IsZero() && !header.IsSingle(MessageResponseType) {
 			sendf("h2=%s", header.ToString())
 		}
 
-		if header := device.headers.cookie.Load(); !header.IsZero() {
+		if header := device.headers.cookie.Load(); !header.IsZero() && !header.IsSingle(MessageCookieReplyType) {
 			sendf("h3=%s", header.ToString())
 		}
 
-		if header := device.headers.transport.Load(); !header.IsZero() {
+		if header := device.headers.transport.Load(); !header.IsZero() && !header.IsSingle(MessageTransportType) {
 			sendf("h4=%s", header.ToString())
 		}
 

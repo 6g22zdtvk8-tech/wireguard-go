@@ -139,6 +139,10 @@ func (r UintRange) IsZero() bool {
 	return r == 0
 }
 
+func (r UintRange) IsSingle(v uint32) bool {
+	return r == UintRange(uint64(v)<<32|uint64(v))
+}
+
 func (r UintRange) PickOne() uint32 {
 	lo, hi := uint32(r), uint32(r>>32)
 	return lo + fastrandn(hi-lo+1)
