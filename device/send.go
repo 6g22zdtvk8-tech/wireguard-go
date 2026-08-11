@@ -141,7 +141,7 @@ func (peer *Peer) SendHandshakeInitiation(isRetry bool) error {
 			buffer := make([]byte, MessageEncapsulatingTransportSize+ipacket.ObfuscatedLen(0))
 			buf := buffer[MessageEncapsulatingTransportSize:]
 			ipacket.Obfuscate(buf, nil)
-			sendBuffer = append(sendBuffer, buf)
+			sendBuffer = append(sendBuffer, buffer)
 		}
 	}
 
