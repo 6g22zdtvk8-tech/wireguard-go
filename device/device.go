@@ -132,6 +132,9 @@ type Device struct {
 		keepaliveTimeoutSec AtomicUintRange
 		maxHandshakeAttemps AtomicUintRange
 	}
+
+	randomTrailers atomic.Bool
+	disableCookies atomic.Bool
 }
 
 // deviceState represents the state of a Device.
