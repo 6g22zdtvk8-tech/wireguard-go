@@ -743,8 +743,8 @@ func (device *Device) JunkPackets() [][]byte {
 	max := device.junk.max.Load()
 
 	for range device.junk.count.Load() {
-		buf := make([]byte, min+fastrandn(max-min))
-		rand.Read(buf)
+		buf := make([]byte, MessageEncapsulatingTransportSize+min+fastrandn(max-min))
+		rand.Read(buf[MessageEncapsulatingTransportSize:])
 		bufs = append(bufs, buf)
 	}
 
