@@ -537,6 +537,20 @@ func gatherPacketBytes(packetSlices [][]byte, offset int, destination []byte) bo
 	return false
 }
 
+// inputPacketBufferSize returns the buffer size for a packet handed in through
+// InputPacket/InputPackets. The exact size only leaves room for PaddingMultiple
+// bytes of padding, but RoutineEncryption may append more: up to the content
+// padding addition, or a random trailer. When slices.Grow has to reallocate,
+// elem.packet no longer lives in elem.buffer and re-slicing the buffer after
+// Seal panics (slice bounds out of range). Use a full-size buffer then, as the
+// regular TUN read path does.
+func (device *Device) inputPacketBufferSize(exact int) int {
+	if device.randomTrailers.Load() || !device.contentPaddingAddition.Load().IsZero() {
+		return MaxMessageSize
+	}
+	return exact
+}
+
 func (device *Device) InputPacket(destination []byte, packetSlices [][]byte) {
 	peer := device.inputPacketPeer(destination, packetSlices)
 	if peer == nil {
@@ -554,6 +568,7 @@ func (device *Device) InputPacket(destination []byte, packetSlices [][]byte) {
 	if allocLength > MaxMessageSize {
 		return
 	}
+	allocLength = device.inputPacketBufferSize(allocLength)
 	elem := device.GetOutboundElement()
 	elem.buffer = device.GetOutboundBuffer(allocLength)
 	elem.nonce = 0
@@ -602,6 +617,7 @@ func (device *Device) InputPackets(packets []*InputPacketRef) []*InputPacketRef 
 		if allocLength > MaxMessageSize {
 			continue
 		}
+		allocLength = device.inputPacketBufferSize(allocLength)
 		elem := device.GetOutboundElement()
 		elem.buffer = device.GetOutboundBuffer(allocLength)
 		elem.nonce = 0
